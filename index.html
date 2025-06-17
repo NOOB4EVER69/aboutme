@@ -307,6 +307,8 @@
             justify-content: center;
             align-items: center;
             transition: opacity 1s ease-out;
+            cursor: pointer;
+            /* Add cursor pointer to indicate it's clickable */
         }
 
         #startup-logo {
@@ -372,7 +374,6 @@
             <div id="date"></div>
         </div>
 
-        <!-- Desktop Icons -->
         <div class="desktop-icon" id="icon-terminal" style="top: 2rem; left: 2rem;"><svg class="w-12 h-12" fill="none"
                 stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -407,7 +408,6 @@
                 </path>
             </svg><span>???.txt</span></div>
 
-        <!-- App Windows -->
         <div id="terminal-window" class="window">
             <div class="window-header"><span class="window-title">/bin/bash</span>
                 <div class="window-controls">
@@ -416,9 +416,10 @@
             </div>
             <div class="window-content" id="terminal-content">
                 <div id="terminal-output"></div>
+
                 <div id="terminal-input-line">
                     <span class="prompt">guest@portfolio:~$</span>
-                    <input type="text" id="terminal-input" autocomplete="off" autofocus />
+                    <input type="text" id="terminal-input" placeholder="type help" autocomplete="off" autofocus />
                 </div>
             </div>
         </div>
@@ -532,13 +533,13 @@
             </div>
             <div class="window-content font-mono text-emerald-400 text-xs" style="line-height: 1;">
                 <pre>
-@@@@     @@@  
-@  @     @  @ 
-@  @     @   @
-@  @     @   @
-@  @     @@@@@
+@@@@      @@@  
+@  @      @  @ 
+@  @      @   @
+@  @      @   @
+@  @      @@@@@
 @@@           
-       @@@@@@ 
+      @@@@@@ 
      @@@    @@
     @        @
    @         @
@@ -547,7 +548,6 @@
 </pre>
             </div>
         </div>
-        <!-- Settings Window -->
         <div id="settings-window" class="window">
             <div class="window-header"><span class="window-title">System Settings</span>
                 <div class="window-controls">
@@ -602,7 +602,24 @@
                 const startupStatus = document.getElementById('startup-status');
                 const startupProgressBar = document.getElementById('startup-progress-bar');
 
+                // --- FIX START ---
+                // 1. Add a flag to prevent the sequence from running more than once.
+                let hasStarted = false;
+
+                // 2. Change the initial message to prompt the user for interaction.
+                startupStatus.textContent = 'Click anywhere to begin.';
+
+                // 3. Wrap the startup logic in an event listener that waits for a user click.
+                document.body.addEventListener('click', async () => {
+                    if (hasStarted) return;
+                    hasStarted = true;
+                    await runStartupSequence();
+                }, { once: true }); // Use { once: true } so the event listener removes itself after running.
+                // --- FIX END ---
+
+
                 async function runStartupSequence() {
+                    // Tone.start() is now called *after* the user has clicked, so it will work.
                     await Tone.start();
                     soundsReady = true;
                     ambientDrone.triggerAttack("A2");
@@ -623,7 +640,6 @@
 
                     initializeDesktop();
                 }
-                runStartupSequence();
 
                 function initializeDesktop() {
                     document.getElementById('desktop').style.display = 'block';
@@ -684,7 +700,7 @@
 
                     function applySettings() {
                         const settings = JSON.parse(localStorage.getItem('portfolioSettings')) || {};
-                        const { accentColor = '#34d399', wallpaper = 'Matrix Rain' } = settings;
+                        const { accentColor = '#34d399', wallpaper = 'neural' } = settings;
                         document.documentElement.style.setProperty('--emerald', accentColor);
                         colorPicker.value = accentColor;
                         if (wallpaper !== wallpaperSelector.value) { wallpaperSelector.value = wallpaper; }
@@ -706,7 +722,7 @@
                     const terminalOutput = document.getElementById('terminal-output');
                     const terminalInput = document.getElementById('terminal-input');
                     const printToTerminal = (text, isCommand = false) => { const p = document.createElement('p'); if (isCommand) { p.innerHTML = `<span class="prompt">guest@portfolio:~$</span> ${text}` } else { p.innerHTML = text } terminalOutput.appendChild(p); terminalOutput.parentElement.scrollTop = terminalOutput.parentElement.scrollHeight; };
-                    const neofetch = ['<span class="text-emerald-400">                   -`</span>                    <span class="text-gray-400">guest@portfolio</span>', '<span class="text-emerald-400">                  .o+`</span>                   <span class="text-gray-400">-----------------</span>', '<span class="text-emerald-400">                 `ooo/</span>                    <span class="text-gray-400"><b>OS</b>: NOOB4EVER_OS v3.5</span>', '<span class="text-emerald-400">                `+oooo:</span>                   <span class="text-gray-400"><b>Alias</b>: NOOB4EVER</span>', '<span class="text-emerald-400">               `+oooooo:</span>                  <span class="text-gray-400"><b>Vibe</b>: Chaotic Creative</span>', '<span class="text-emerald-400">               -+oooooo+:</span>                 <span class="text-gray-400"><b>Born</b>: 2007, Egypt</span>', '<span class="text-emerald-400">             `/:-:++oooo+:</span>                <span class="text-gray-400"><b>Shell</b>: /bin/bash</span>', '<span class="text-emerald-400">            `/++++/+++++++:</span>', '<span class="text-emerald-400">           `/++++++++++++++:</span>', '<span class="text-emerald-400">          `/+++o` `oooooo/`</span>', '<span class="text-emerald-400">         `/+o+`   `o` `+o</span>', '<span class="text-emerald-400">        `+o`         `o</span>', '<span class="text-emerald-400">        `o`          `o</span>', '<span class="text-emerald-400">         `o`         `o</span>', '<span class="text-emerald-400">          `o`       `o`</span>', '<span class="text-emerald-400">           `oo`   `oo`</span>', '<span class="text-emerald-400">             `+ooooo+`</span>', '<span class="text-emerald-400">               `ooo`</span>'];
+                    const neofetch = ['<span class="text-emerald-400">               -`</span>                   <span class="text-gray-400">guest@portfolio</span>', '<span class="text-emerald-400">              .o+`</span>                   <span class="text-gray-400">-----------------</span>', '<span class="text-emerald-400">             `ooo/</span>                   <span class="text-gray-400"><b>OS</b>: NOOB4EVER_OS v3.5</span>', '<span class="text-emerald-400">            `+oooo:</span>                   <span class="text-gray-400"><b>Alias</b>: NOOB4EVER</span>', '<span class="text-emerald-400">           `+oooooo:</span>                   <span class="text-gray-400"><b>Vibe</b>: Chaotic Creative</span>', '<span class="text-emerald-400">           -+oooooo+:</span>                  <span class="text-gray-400"><b>Born</b>: 2007, Egypt</span>', '<span class="text-emerald-400">         `/:-:++oooo+:</span>                 <span class="text-gray-400"><b>Shell</b>: /bin/bash</span>', '<span class="text-emerald-400">        `/++++/+++++++:</span>', '<span class="text-emerald-400">       `/++++++++++++++:</span>', '<span class="text-emerald-400">      `/+++o` `oooooo/`</span>', '<span class="text-emerald-400">     `/+o+`   `o` `+o</span>', '<span class="text-emerald-400">    `+o`         `o</span>', '<span class="text-emerald-400">    `o`           `o</span>', '<span class="text-emerald-400">     `o`         `o</span>', '<span class="text-emerald-400">      `o`       `o`</span>', '<span class="text-emerald-400">       `oo`   `oo`</span>', '<span class="text-emerald-400">         `+ooooo+`</span>', '<span class="text-emerald-400">           `ooo`</span>'];
                     terminalInput.addEventListener('keydown', (e) => { if (e.key === "Enter") { const command = e.target.value.trim().toLowerCase(); printToTerminal(command, true); e.target.value = ""; executeCommand(command); } });
                     function executeCommand(command) { const [cmd, arg] = command.split(' '); switch (cmd) { case 'help': printToTerminal('Available commands: `help`, `open [app]`, `neofetch`, `clear`'); break; case 'open': if (windows[arg]) { openWindow(arg); printToTerminal(`Opening ${arg}...`) } else { printToTerminal(`Error: app "${arg}" not found.`) } break; case 'neofetch': neofetch.forEach(line => printToTerminal(line)); break; case 'clear': terminalOutput.innerHTML = ''; break; case '': break; default: printToTerminal(`bash: command not found: ${command}`) } }
 
