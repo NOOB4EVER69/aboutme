@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About ME - OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;700&family=Inter:wght@400;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --emerald: #34d399;
+            /* This will be dynamically changed by JS */
+        }
+
+        body {
+            background-color: #000;
+            color: #e5e7eb;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            cursor: default;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            filter: brightness(0.7);
+        }
+
+        #desktop {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            display: none;
+        }
+
+        #desktop.loaded {
+            opacity: 1;
+        }
+
+        .window {
+            position: absolute;
+            width: 500px;
+            height: 400px;
+            min-width: 350px;
+            min-height: 200px;
+            resize: both;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.2s, transform 0.2s;
+            pointer-events: none;
+        }
+
+        .window.show {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        .window-header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 12px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top-left-radius: 11px;
+            border-top-right-radius: 11px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        .window-title {
+            font-family: 'Roboto Mono', monospace;
+            font-weight: bold;
+            color: var(--emerald);
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .control-btn {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+
+        .close-btn {
+            background-color: #ff5f56;
+        }
+
+        .window-content {
+            padding: 20px;
+            flex-grow: 1;
+            overflow-y: auto;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        #terminal-window {
+            top: 15%;
+            left: 30%;
+            width: 600px;
+            height: 350px;
+        }
+
+        #about-window {
+            top: 25%;
+            left: 25%;
+            width: 550px;
+            height: auto;
+            max-height: 70vh;
+        }
+
+        #projects-window {
+            top: 30%;
+            left: 30%;
+            width: 800px;
+            height: 500px;
+        }
+
+        #contact-window {
+            top: 35%;
+            left: 35%;
+            width: 450px;
+            height: auto;
+        }
+
+        #secret-window {
+            top: 20%;
+            left: 50%;
+            width: auto;
+            height: auto;
+        }
+
+        #settings-window {
+            top: 10%;
+            left: 40%;
+            width: 400px;
+            height: auto;
+            resize: vertical;
+        }
+
+        .desktop-icon {
+            position: absolute;
+            cursor: pointer;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            width: 100px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .desktop-icon.dragging {
+            background: rgba(52, 211, 153, 0.2);
+            transform: scale(1.05);
+        }
+
+        .desktop-icon:hover {
+            animation: shake 0.5s;
+            animation-iteration-count: infinite;
+        }
+
+        .desktop-icon svg {
+            margin: 0 auto 8px auto;
+            pointer-events: none;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0);
+            }
+
+            25% {
+                transform: translate(1px, 1px) rotate(1deg);
+            }
+
+            50% {
+                transform: translate(-1px, 1px) rotate(-1deg);
+            }
+
+            75% {
+                transform: translate(1px, -1px) rotate(1deg);
+            }
+        }
+
+        #terminal-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #e5e7eb;
+            flex-grow: 1;
+            font-family: 'Roboto Mono', monospace;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        .terminal-line .prompt {
+            color: var(--emerald);
+            margin-right: 8px;
+        }
+
+        #clock-container {
+            position: fixed;
+            top: 1rem;
+            right: 1.5rem;
+            z-index: 100;
+            font-family: 'Roboto Mono', monospace;
+            color: var(--emerald);
+            text-shadow: 0 0 5px var(--emerald);
+        }
+
+        #mobile-unsupported {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #0a0a0a;
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Inter', sans-serif;
+            padding: 1rem;
+        }
+
+        .unsupported-box .title {
+            color: var(--emerald);
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        /* Settings Window Styles */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .settings-grid label {
+            font-weight: bold;
+            color: var(--emerald);
+        }
+
+        .settings-grid input[type="color"] {
+            width: 100%;
+            height: 40px;
+            border: none;
+            padding: 0;
+            background: none;
+            cursor: pointer;
+        }
+
+        .settings-grid select {
+            background-color: #2d3748;
+            border: 1px solid #4a5568;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        /* Startup Animation */
+        #startup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s ease-out;
+        }
+
+        #startup-logo {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 2.5rem;
+            color: var(--emerald);
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: fadeIn 2s forwards;
+        }
+
+        #startup-progress-bar-container {
+            width: 80%;
+            max-width: 400px;
+            height: 10px;
+            border: 1px solid var(--emerald);
+            margin-top: 1rem;
+        }
+
+        #startup-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--emerald);
+            transition: width 4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #startup-status {
+            font-family: 'Roboto Mono';
+            margin-top: 1rem;
+            color: #9ca3af;
+            height: 2em;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="bg-canvas"></canvas>
+
+    <div id="startup-overlay">
+        <div id="startup-logo">About ME_OS</div>
+        <div id="startup-status">Initializing...</div>
+        <div id="startup-progress-bar-container">
+            <div id="startup-progress-bar"></div>
+        </div>
+    </div>
+
+    <div id="mobile-unsupported">
+        <div class="unsupported-box">
+            <h2 class="title">Compatibility Warning</h2>
+            <p>This interactive experience is designed for larger screens.</p>
+        </div>
+    </div>
+
+    <div id="desktop">
+        <div id="clock-container">
+            <div id="clock"></div>
+            <div id="date"></div>
+        </div>
+
+        <!-- Desktop Icons -->
+        <div class="desktop-icon" id="icon-terminal" style="top: 2rem; left: 2rem;"><svg class="w-12 h-12" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M8 9l3 3-3 3m5 0h3M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"></path>
+            </svg><span>Terminal</span></div>
+        <div class="desktop-icon" id="icon-about" style="top: 9rem; left: 2rem;"><svg class="w-12 h-12" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg><span>About Me</span></div>
+        <div class="desktop-icon" id="icon-projects" style="top: 16rem; left: 2rem;"><svg class="w-12 h-12" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+            </svg><span>Projects</span></div>
+        <div class="desktop-icon" id="icon-contact" style="top: 23rem; left: 2rem;"><svg class="w-12 h-12" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                </path>
+            </svg><span>Contact</span></div>
+        <div class="desktop-icon" id="icon-settings" style="top: 2rem; left: 8rem;"><svg class="w-12 h-12" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z">
+                </path>
+            </svg><span>Settings</span></div>
+        <div class="desktop-icon" id="icon-secret" style="top: 29rem; left: 2rem; opacity: 0.5;"><svg class="w-12 h-12"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                </path>
+            </svg><span>???.txt</span></div>
+
+        <!-- App Windows -->
+        <div id="terminal-window" class="window">
+            <div class="window-header"><span class="window-title">/bin/bash</span>
+                <div class="window-controls">
+                    <div class="control-btn close-btn" data-window="terminal"></div>
+                </div>
+            </div>
+            <div class="window-content" id="terminal-content">
+                <div id="terminal-output"></div>
+                <div id="terminal-input-line">
+                    <span class="prompt">guest@portfolio:~$</span>
+                    <input type="text" id="terminal-input" autocomplete="off" autofocus />
+                </div>
+            </div>
+        </div>
+        <div id="about-window" class="window">
+            <div class="window-header"><span class="window-title">About_Me.txt</span>
+                <div class="window-controls">
+                    <div class="control-btn close-btn" data-window="about"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <h1 class="text-2xl font-bold mb-4 text-emerald-300">About Me</h1>
+                <p class="mb-4">Hey, I’m Mustapha — but online, I’m known as NOOB4 EVER.</p>
+                <p class="mb-4">I’m not just another dev with a keyboard — I’m a chaotic creative force with a love for
+                    breaking the rules (but in a smart way). I build things that feel like dreams, glitches, emotions,
+                    or sometimes all at once. Whether it's an HTML site with a heartbeat, a weird little game that makes
+                    people cry, or a profile maker that feels like a song — I bring raw personality into every line of
+                    code.</p>
+                <p class="mb-4">I’m Egyptian, born in 2007, and I’ve been exploring tech, emotion, and the weird corners
+                    of the internet since I was a kid. I love turning messy ideas into something real. If it’s deep,
+                    nostalgic, dark, random, or too weird for the mainstream — it’s probably my thing.</p>
+                <h2 class="text-xl font-bold mt-6 mb-3 text-emerald-300">What I do:</h2>
+                <ul class="list-disc list-inside text-gray-300 space-y-2 mb-4">
+                    <li>Mental health tools that feel personal and honest</li>
+                    <li>HTML/JS projects that play with identity, emotion, and creativity</li>
+                    <li>Scratch games with stories that hit hard</li>
+                    <li>Creative image-to-sound experiments</li>
+                    <li>Sites that feel like a vibe, not just a page</li>
+                </ul>
+                <h2 class="text-xl font-bold mt-6 mb-3 text-emerald-300">Things I love:</h2>
+                <ul class="list-disc list-inside text-gray-300 space-y-2 mb-4">
+                    <li>Dark colors, glitchy energy, and music that makes you feel</li>
+                    <li>Mixing art with tech — storytelling with logic</li>
+                    <li>Making stuff that people don’t forget</li>
+                    <li>Giving others tools to express themselves</li>
+                </ul>
+                <p class="font-bold text-lg mt-6">I’m not here to follow trends. I’m here to start something.</p>
+            </div>
+        </div>
+        <div id="projects-window" class="window">
+            <div class="window-header"><span class="window-title">/My_Projects</span>
+                <div class="window-controls">
+                    <div class="control-btn close-btn" data-window="projects"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="project-card rounded-xl overflow-hidden border border-gray-700"><img
+                            src="./Screenshot 2025-06-17 080158.png" alt="Project 1" class="w-full h-40 object-cover">
+                        <div class="p-4">
+                            <h4 class="text-lg font-bold text-emerald-300">Sus Os</h4>
+                            <p class="text-gray-400 text-sm my-2">It's a simulated operating system that runs entirely
+                                in a web browser. What makes it cool is its persistent virtual file system, which lets
+                                you create and save files, and its nostalgic 'cold boot' experience that immerses you in
+                                a unique digital world.</p>
+                            <div class="flex flex-wrap gap-2 mb-3"><span
+                                    class="bg-gray-800 text-xs font-semibold px-2 py-1 rounded">HTML</span><span
+                                    class="bg-gray-800 text-xs font-semibold px-2 py-1 rounded">JS</span></div>
+                            <div class="flex items-center space-x-4"><a href="https://noob4ever69.github.io/susos/"
+                                    class="text-emerald-400 hover:underline text-sm font-semibold">Live Demo</a><a
+                                    href="https://github.com/NOOB4EVER69/susos"
+                                    class="text-gray-400 hover:underline text-sm font-semibold">Source Code</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="project-card rounded-xl overflow-hidden border border-gray-700"><img
+                            src="./Screenshot 2025-06-17 080130.png" alt="Project 2" class="w-full h-40 object-cover">
+                        <div class="p-4">
+                            <h4 class="text-lg font-bold text-emerald-300">Neon Dash</h4>
+                            <p class="text-gray-400 text-sm my-2">It's a fast-paced, retro-style arcade game. The cool
+                                factor is its vibrant neon aesthetic and challenging reflex-based gameplay, which feels
+                                like a classic arcade experience brought to the web.</p>
+                            <div class="flex flex-wrap gap-2 mb-3"><span
+                                    class="bg-gray-800 text-xs font-semibold px-2 py-1 rounded">HTML</span><span
+                                    class="bg-gray-800 text-xs font-semibold px-2 py-1 rounded">JS</span></div>
+                            <div class="flex items-center space-x-4"><a href="https://noob4ever69.github.io/Neon-Dash/"
+                                    class="text-emerald-400 hover:underline text-sm font-semibold">Live Demo</a><a
+                                    href="https://github.com/NOOB4EVER69/Neon-Dash"
+                                    class="text-gray-400 hover:underline text-sm font-semibold">Source Code</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="contact-window" class="window">
+            <div class="window-header"><span class="window-title">Contact.app</span>
+                <div class="window-controls">
+                    <div class="control-btn close-btn" data-window="contact"></div>
+                </div>
+            </div>
+            <div class="window-content text-center flex flex-col justify-center items-center">
+                <h3 class="text-2xl font-bold mb-4">📬 Let’s make something unforgettable.</h3>
+                <div class="space-y-4 text-left">
+                    <p><strong class="text-emerald-400">📧 Email:</strong> <a href="mailto:lolkilllerman2040@gmail.com"
+                            class="hover:underline">lolkilllerman2040@gmail.com</a></p>
+                    <p><strong class="text-emerald-400">📞 Phone:</strong> aphonenumber</p>
+                    <p><strong class="text-emerald-400">🧠 GitHub:</strong> <a href="https://github.com/NOOB4EVER69"
+                            target="_blank" rel="noopener noreferrer" class="hover:underline">github.com/NOOB4EVER69</a>
+                    </p>
+                    <p><strong class="text-emerald-400">🎮 itch.io:</strong> <a href="https://the-s0s.itch.io/"
+                            target="_blank" rel="noopener noreferrer" class="hover:underline">the-s0s.itch.io</a></p>
+                    <p><strong class="text-emerald-400">sorry not for Hiring.</strong></p>
+                </div>
+            </div>
+        </div>
+        <div id="secret-window" class="window">
+            <div class="window-header"><span class="window-title">???.txt</span>
+                <div class="window-controls">
+                    <div class="control-btn close-btn" data-window="secret"></div>
+                </div>
+            </div>
+            <div class="window-content font-mono text-emerald-400 text-xs" style="line-height: 1;">
+                <pre>
+@@@@     @@@  
+@  @     @  @ 
+@  @     @   @
+@  @     @   @
+@  @     @@@@@
+@@@           
+       @@@@@@ 
+     @@@    @@
+    @        @
+   @         @
+   @@       @@
+   @@@@@@@@@@ 
+</pre>
+            </div>
+        </div>
+        <!-- Settings Window -->
+        <div id="settings-window" class="window">
+            <div class="window-header"><span class="window-title">System Settings</span>
+                <div class="window-controls">
+                    <div class="control-btn close-btn" data-window="settings"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="settings-grid">
+                    <div>
+                        <label for="accent-color-picker">Accent Color</label>
+                        <input type="color" id="accent-color-picker">
+                    </div>
+                    <div>
+                        <label for="wallpaper-selector">Wallpaper Engine</label>
+                        <select id="wallpaper-selector">
+                            <option value="neural">Neural Network</option>
+                            <option value="matrix">Matrix Rain</option>
+                            <option value="starfield">Starfield</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                if (window.innerWidth <= 768) {
+                    document.getElementById('mobile-unsupported').style.display = 'flex';
+                    return;
+                }
+
+                // --- Sound Engine ---
+                let soundsReady = false;
+                const synth = new Tone.Synth().toDestination();
+                const membraneSynth = new Tone.MembraneSynth().toDestination();
+                const ambientDrone = new Tone.AMSynth({ harmonicity: 1.2, envelope: { attack: 5, decay: 0.1, sustain: 1, release: 5 }, modulation: { type: 'sine' } }).toDestination();
+                ambientDrone.volume.value = -30;
+                const bootSound = new Tone.Synth({
+                    oscillator: { type: "fatsawtooth", count: 3, spread: 30 },
+                    envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.5 }
+                }).toDestination();
+                bootSound.volume.value = -12;
+
+                function playClickSound() { if (soundsReady) membraneSynth.triggerAttackRelease("C1", "8n"); }
+                function playOpenSound() { if (soundsReady) synth.triggerAttackRelease("C5", "8n"); }
+                function playCloseSound() { if (soundsReady) synth.triggerAttackRelease("G4", "8n"); }
+
+                // --- Startup Sequence ---
+                const startupOverlay = document.getElementById('startup-overlay');
+                const startupStatus = document.getElementById('startup-status');
+                const startupProgressBar = document.getElementById('startup-progress-bar');
+
+                async function runStartupSequence() {
+                    await Tone.start();
+                    soundsReady = true;
+                    ambientDrone.triggerAttack("A2");
+                    bootSound.triggerAttack("C2");
+
+                    const statuses = ["Booting Kernel...", "Loading Drivers...", "Mounting Filesystem...", "Initializing UI...", "Welcome."];
+                    for (let i = 0; i < statuses.length; i++) {
+                        startupStatus.textContent = statuses[i];
+                        await new Promise(res => setTimeout(res, 800));
+                    }
+
+                    startupProgressBar.style.width = '100%';
+                    bootSound.triggerAttackRelease("C4", "0.5s", "+4");
+
+                    await new Promise(res => setTimeout(res, 1000));
+                    startupOverlay.style.opacity = 0;
+                    startupOverlay.addEventListener('transitionend', () => startupOverlay.remove());
+
+                    initializeDesktop();
+                }
+                runStartupSequence();
+
+                function initializeDesktop() {
+                    document.getElementById('desktop').style.display = 'block';
+
+                    const clockEl = document.getElementById('clock');
+                    const dateEl = document.getElementById('date');
+                    function updateTime() {
+                        const now = new Date();
+                        clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        dateEl.textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+                    }
+                    setInterval(updateTime, 1000);
+                    updateTime();
+
+                    const windows = {
+                        'terminal': document.getElementById('terminal-window'), 'about': document.getElementById('about-window'), 'projects': document.getElementById('projects-window'), 'contact': document.getElementById('contact-window'), 'secret': document.getElementById('secret-window'), 'settings': document.getElementById('settings-window'),
+                    };
+                    const icons = {
+                        'terminal': document.getElementById('icon-terminal'), 'about': document.getElementById('icon-about'), 'projects': document.getElementById('icon-projects'), 'contact': document.getElementById('icon-contact'), 'secret': document.getElementById('icon-secret'), 'settings': document.getElementById('icon-settings'),
+                    };
+                    let highestZ = 10;
+                    const openWindow = (id) => { if (windows[id]) { playOpenSound(); windows[id].classList.add('show'); bringToFront(windows[id]); } };
+                    const closeWindow = (id) => { if (windows[id]) { playCloseSound(); windows[id].classList.remove('show'); } };
+                    const bringToFront = (el) => { highestZ++; el.style.zIndex = highestZ; };
+
+                    Object.keys(icons).forEach(id => {
+                        const iconEl = icons[id];
+                        iconEl.addEventListener('mousedown', (e) => {
+                            playClickSound(); e.preventDefault(); iconEl.classList.add('dragging');
+                            let offsetX = e.clientX - iconEl.getBoundingClientRect().left;
+                            let offsetY = e.clientY - iconEl.getBoundingClientRect().top;
+                            const onIconMove = (e) => { iconEl.style.left = `${e.clientX - offsetX}px`; iconEl.style.top = `${e.clientY - offsetY}px`; };
+                            const onIconUp = () => { document.removeEventListener('mousemove', onIconMove); document.removeEventListener('mouseup', onIconUp); iconEl.classList.remove('dragging'); };
+                            document.addEventListener('mousemove', onIconMove);
+                            document.addEventListener('mouseup', onIconUp);
+                        });
+                        iconEl.addEventListener('dblclick', () => openWindow(id));
+                    });
+
+                    Object.values(windows).forEach(windowEl => {
+                        const header = windowEl.querySelector('.window-header');
+                        const closeBtn = windowEl.querySelector('.close-btn');
+                        closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeWindow(closeBtn.dataset.window); });
+                        header.addEventListener('mousedown', (e) => {
+                            playClickSound(); bringToFront(windowEl);
+                            let offsetX = e.clientX - windowEl.getBoundingClientRect().left;
+                            let offsetY = e.clientY - windowEl.getBoundingClientRect().top;
+                            const onWindowMove = (e) => { windowEl.style.left = `${e.clientX - offsetX}px`; windowEl.style.top = `${e.clientY - offsetY}px`; };
+                            const onWindowUp = () => { document.removeEventListener('mousemove', onWindowMove); document.removeEventListener('mouseup', onWindowUp); };
+                            document.addEventListener('mousemove', onWindowMove);
+                            document.addEventListener('mouseup', onWindowUp);
+                        });
+                        windowEl.addEventListener('mousedown', () => bringToFront(windowEl));
+                    });
+
+                    const colorPicker = document.getElementById('accent-color-picker');
+                    const wallpaperSelector = document.getElementById('wallpaper-selector');
+
+                    function applySettings() {
+                        const settings = JSON.parse(localStorage.getItem('portfolioSettings')) || {};
+                        const { accentColor = '#34d399', wallpaper = 'Matrix Rain' } = settings;
+                        document.documentElement.style.setProperty('--emerald', accentColor);
+                        colorPicker.value = accentColor;
+                        if (wallpaper !== wallpaperSelector.value) { wallpaperSelector.value = wallpaper; }
+                        startBackground(wallpaper);
+                    }
+
+                    function saveSetting(key, value) {
+                        let settings = JSON.parse(localStorage.getItem('portfolioSettings')) || {};
+                        settings[key] = value;
+                        localStorage.setItem('portfolioSettings', JSON.stringify(settings));
+                        applySettings();
+                    }
+
+                    colorPicker.addEventListener('input', (e) => saveSetting('accentColor', e.target.value));
+                    wallpaperSelector.addEventListener('change', (e) => saveSetting('wallpaper', e.target.value));
+
+                    applySettings();
+
+                    const terminalOutput = document.getElementById('terminal-output');
+                    const terminalInput = document.getElementById('terminal-input');
+                    const printToTerminal = (text, isCommand = false) => { const p = document.createElement('p'); if (isCommand) { p.innerHTML = `<span class="prompt">guest@portfolio:~$</span> ${text}` } else { p.innerHTML = text } terminalOutput.appendChild(p); terminalOutput.parentElement.scrollTop = terminalOutput.parentElement.scrollHeight; };
+                    const neofetch = ['<span class="text-emerald-400">                   -`</span>                    <span class="text-gray-400">guest@portfolio</span>', '<span class="text-emerald-400">                  .o+`</span>                   <span class="text-gray-400">-----------------</span>', '<span class="text-emerald-400">                 `ooo/</span>                    <span class="text-gray-400"><b>OS</b>: NOOB4EVER_OS v3.5</span>', '<span class="text-emerald-400">                `+oooo:</span>                   <span class="text-gray-400"><b>Alias</b>: NOOB4EVER</span>', '<span class="text-emerald-400">               `+oooooo:</span>                  <span class="text-gray-400"><b>Vibe</b>: Chaotic Creative</span>', '<span class="text-emerald-400">               -+oooooo+:</span>                 <span class="text-gray-400"><b>Born</b>: 2007, Egypt</span>', '<span class="text-emerald-400">             `/:-:++oooo+:</span>                <span class="text-gray-400"><b>Shell</b>: /bin/bash</span>', '<span class="text-emerald-400">            `/++++/+++++++:</span>', '<span class="text-emerald-400">           `/++++++++++++++:</span>', '<span class="text-emerald-400">          `/+++o` `oooooo/`</span>', '<span class="text-emerald-400">         `/+o+`   `o` `+o</span>', '<span class="text-emerald-400">        `+o`         `o</span>', '<span class="text-emerald-400">        `o`          `o</span>', '<span class="text-emerald-400">         `o`         `o</span>', '<span class="text-emerald-400">          `o`       `o`</span>', '<span class="text-emerald-400">           `oo`   `oo`</span>', '<span class="text-emerald-400">             `+ooooo+`</span>', '<span class="text-emerald-400">               `ooo`</span>'];
+                    terminalInput.addEventListener('keydown', (e) => { if (e.key === "Enter") { const command = e.target.value.trim().toLowerCase(); printToTerminal(command, true); e.target.value = ""; executeCommand(command); } });
+                    function executeCommand(command) { const [cmd, arg] = command.split(' '); switch (cmd) { case 'help': printToTerminal('Available commands: `help`, `open [app]`, `neofetch`, `clear`'); break; case 'open': if (windows[arg]) { openWindow(arg); printToTerminal(`Opening ${arg}...`) } else { printToTerminal(`Error: app "${arg}" not found.`) } break; case 'neofetch': neofetch.forEach(line => printToTerminal(line)); break; case 'clear': terminalOutput.innerHTML = ''; break; case '': break; default: printToTerminal(`bash: command not found: ${command}`) } }
+
+                    openWindow('terminal');
+                    document.getElementById('desktop').classList.add('loaded');
+                    terminalInput.focus();
+                }
+
+                // --- Background Canvas Engine ---
+                const bgCanvas = document.getElementById('bg-canvas');
+                const bgCtx = bgCanvas.getContext('2d');
+                let currentAnimation;
+                let animationFrameId;
+
+                function resizeCanvas() {
+                    bgCanvas.width = window.innerWidth;
+                    bgCanvas.height = window.innerHeight;
+                }
+                resizeCanvas();
+                window.addEventListener('resize', () => {
+                    resizeCanvas();
+                    if (currentAnimation) {
+                        startBackground(currentAnimation);
+                    }
+                });
+
+                function startBackground(type) {
+                    if (animationFrameId) {
+                        cancelAnimationFrame(animationFrameId);
+                    }
+                    currentAnimation = type;
+                    bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+                    switch (type) {
+                        case 'matrix':
+                            initMatrix();
+                            animateMatrix();
+                            break;
+                        case 'starfield':
+                            initStarfield();
+                            animateStarfield();
+                            break;
+                        case 'neural':
+                            initNeural();
+                            animateNeural();
+                            break;
+                    }
+                }
+
+                let columns, drops;
+                const matrixChars = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥク';
+                function initMatrix() {
+                    const fontSize = 16;
+                    columns = bgCanvas.width / fontSize;
+                    drops = [];
+                    for (let x = 0; x < columns; x++) drops[x] = 1;
+                }
+                function animateMatrix() {
+                    bgCtx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                    bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+                    bgCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--emerald');
+                    bgCtx.font = '16px monospace';
+                    for (let i = 0; i < drops.length; i++) {
+                        const text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+                        bgCtx.fillText(text, i * 16, drops[i] * 16);
+                        if (drops[i] * 16 > bgCanvas.height && Math.random() > 0.975) drops[i] = 0;
+                        drops[i]++;
+                    }
+                    animationFrameId = requestAnimationFrame(animateMatrix);
+                }
+
+                let stars, starSpeed;
+                function initStarfield() {
+                    stars = [];
+                    starSpeed = 2;
+                    for (let i = 0; i < 800; i++) {
+                        stars.push({ x: Math.random() * bgCanvas.width - bgCanvas.width / 2, y: Math.random() * bgCanvas.height - bgCanvas.height / 2, z: Math.random() * bgCanvas.width });
+                    }
+                }
+                function animateStarfield() {
+                    bgCtx.fillStyle = 'black';
+                    bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+                    bgCtx.fillStyle = 'white';
+                    bgCtx.translate(bgCanvas.width / 2, bgCanvas.height / 2);
+                    for (let star of stars) {
+                        star.z -= starSpeed;
+                        if (star.z <= 0) {
+                            star.z = bgCanvas.width;
+                            star.x = Math.random() * bgCanvas.width - bgCanvas.width / 2;
+                            star.y = Math.random() * bgCanvas.height - bgCanvas.height / 2;
+                        }
+                        const k = 128 / star.z;
+                        const px = star.x * k;
+                        const py = star.y * k;
+                        const size = (1 - star.z / bgCanvas.width) * 5;
+                        bgCtx.beginPath();
+                        bgCtx.arc(px, py, size / 2, 0, Math.PI * 2);
+                        bgCtx.fill();
+                    }
+                    bgCtx.setTransform(1, 0, 0, 1, 0, 0);
+                    animationFrameId = requestAnimationFrame(animateStarfield);
+                }
+
+                let particles;
+                function initNeural() {
+                    particles = [];
+                    let particleCount = Math.floor(bgCanvas.width * bgCanvas.height / 20000);
+                    for (let i = 0; i < particleCount; i++) {
+                        particles.push({
+                            x: Math.random() * bgCanvas.width, y: Math.random() * bgCanvas.height,
+                            vx: Math.random() * 0.4 - 0.2, vy: Math.random() * 0.4 - 0.2,
+                            radius: Math.random() * 2 + 1,
+                            pulse: 0, pulseSpeed: Math.random() * 0.02 + 0.01
+                        });
+                    }
+                }
+                function animateNeural() {
+                    bgCtx.fillStyle = '#000';
+                    bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+                    const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--emerald').trim();
+                    for (let i = 0; i < particles.length; i++) {
+                        let p = particles[i];
+                        p.x += p.vx; p.y += p.vy;
+                        if (p.x < 0 || p.x > bgCanvas.width) p.vx *= -1;
+                        if (p.y < 0 || p.y > bgCanvas.height) p.vy *= -1;
+                        p.pulse = (p.pulse + p.pulseSpeed) % (Math.PI * 2);
+                        const currentRadius = p.radius + Math.sin(p.pulse) * 0.5;
+                        bgCtx.beginPath();
+                        bgCtx.fillStyle = accentColor;
+                        bgCtx.arc(p.x, p.y, currentRadius, 0, Math.PI * 2);
+                        bgCtx.fill();
+                    }
+                    bgCtx.beginPath();
+                    for (let i = 0; i < particles.length; i++) {
+                        for (let j = i + 1; j < particles.length; j++) {
+                            const dist = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
+                            if (dist < 100) {
+                                bgCtx.globalAlpha = 1 - (dist / 100);
+                                bgCtx.moveTo(particles[i].x, particles[i].y);
+                                bgCtx.lineTo(particles[j].x, particles[j].y);
+                            }
+                        }
+                    }
+                    bgCtx.strokeStyle = accentColor;
+                    bgCtx.stroke();
+                    bgCtx.globalAlpha = 1;
+                    animationFrameId = requestAnimationFrame(animateNeural);
+                }
+
+            } catch (error) {
+                console.error("A critical error occurred:", error);
+                document.body.innerHTML = '<div style="color: red; font-family: monospace; padding: 2rem;">A fatal error occurred. Please check the console.</div>';
+            }
+        });
+    </script>
+</body>
+
+</html>
